@@ -1,0 +1,22 @@
+1. -1
+2. 
+Helper(n, l):
+Append 0 and n to the beginning and end of l
+numcuts = |l|
+dp = Array(numcuts, numcuts)
+Initialize dp to -1
+return C(1, numcuts)
+
+C(i, j):
+if dp[i, j] != -1:
+  return dp[i, j]
+else if j = i + 1:
+  dp[i, j] = 0
+else:
+  min = infinity
+  for x = i+1 to j-1:
+    temp = C(i, x) + C(x, j)
+    if temp < min:
+      min = temp
+  dp[i, j] = l[j] - l[i] + min
+return dp[i, j]
