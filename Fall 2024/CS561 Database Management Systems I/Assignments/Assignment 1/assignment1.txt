@@ -1,0 +1,97 @@
+Name: Vaibhav Ganeriwala
+CWID: 20028677
+
+QUERY 1:
+
+WITH view1 AS (
+   SELECT cust AS CUSTOMER, MIN(quant) AS MIN_Q, MAX(quant) AS MAX_Q, ROUND(AVG(quant), 0) AS AVG_Q FROM sales GROUP BY cust
+   ),
+min_sales AS (
+   SELECT s.cust AS CUSTOMER, s.quant AS MIN_Q, s.prod AS MIN_PROD, s.date AS MIN_DATE, s.state AS ST
+   FROM sales s JOIN view1 ON s.cust = view1.CUSTOMER AND s.quant = view1.MIN_Q
+)
+SELECT m.CUSTOMER, m.MIN_Q, m.MIN_PROD, m.MIN_DATE, m.ST, v.MAX_Q, s.prod AS MAX_PROD, s.date AS MAX_DATE, 
+	s.state AS ST, v.AVG_Q FROM min_sales m 
+   JOIN view1 v ON m.CUSTOMER = v.CUSTOMER 
+	JOIN sales s ON m.CUSTOMER = s.cust  
+	AND v.MAX_Q = s.quant;
+
+QUERY 2:
+
+WITH
+	monthly AS (
+		SELECT YEAR, MONTH, SUM(quant) AS TOTAL_Q FROM SALES GROUP BY YEAR, MONTH
+	),
+	yearly_range AS (
+		SELECT YEAR, MAX(TOTAL_Q) AS MAX_Q, MIN(TOTAL_Q) AS MIN_Q FROM monthly GROUP BY YEAR
+	)
+SELECT 
+    monthly.YEAR, monthly.MONTH AS BUSIEST_MONTH, monthly.TOTAL_Q AS BUSIEST_TOTAL_Q,
+    low.MONTH AS SLOWEST_MONTH, low.TOTAL_Q AS SLOWEST_TOTAL_Q
+	FROM monthly
+	JOIN yearly_range yr ON monthly.YEAR = yr.YEAR AND monthly.TOTAL_Q = yr.MAX_Q
+	JOIN monthly low ON low.YEAR = yr.YEAR AND low.TOTAL_Q = yr.MIN_Q
+	ORDER BY monthly.YEAR;
+
+QUERY 3:
+
+WITH Q1 AS (SELECT prod, month, SUM(quant) AS SUM_Q FROM SALES GROUP BY prod, month),
+     MAX_Q AS (SELECT prod, MAX(SUM_Q) AS MOST FROM Q1 GROUP BY prod),
+	 MIN_Q AS (SELECT prod, MIN(SUM_Q) AS LEAST FROM Q1 GROUP BY prod),
+     MOST_POPULAR AS (SELECT Q1.prod, Q1.month FROM Q1 JOIN MAX_Q AS MQ ON Q1.prod = MQ.prod AND Q1.SUM_Q = MQ.MOST),
+     LEAST_POPULAR AS (SELECT Q1.prod, Q1.month FROM Q1 JOIN MIN_Q AS MNQ ON Q1.prod = MNQ.prod AND Q1.SUM_Q = MNQ.LEAST)
+SELECT MP.prod,
+       MP.month AS MOST_POPULAR_MONTH,
+       LP.month AS LEAST_POPULAR_MONTH
+	   FROM MOST_POPULAR AS MP
+	   JOIN LEAST_POPULAR AS LP ON MP.prod = LP.prod;
+
+QUERY 4:
+WITH view1 AS
+    (SELECT cust, prod, ROUND(AVG(quant), 0) AS avg, COUNT(quant) AS count, SUM(quant) AS total 
+     FROM sales GROUP BY cust, prod),
+
+Spring AS
+    (SELECT cust, prod, ROUND(AVG(quant), 0) AS spring_avg FROM sales 
+     WHERE month IN (3, 4, 5) GROUP BY cust, prod),
+
+Summer AS
+    (SELECT cust, prod, ROUND(AVG(quant), 0) AS summer_avg FROM sales 
+     WHERE month IN (6, 7, 8) GROUP BY cust, prod),
+
+Fall AS
+    (SELECT cust, prod, ROUND(AVG(quant), 0) AS fall_avg FROM sales 
+	WHERE month IN (9, 10, 11) GROUP BY cust, prod),
+
+Winter AS
+    (SELECT cust, prod, ROUND(AVG(quant), 0) AS winter_avg FROM sales 
+     WHERE month IN (12, 1, 2) GROUP BY cust, prod)
+
+SELECT view1.cust AS CUSTOMER, view1.prod AS PRODUCT,
+       Spring.spring_avg AS SPRING_AVG, Summer.summer_avg AS SUMMER_AVG,
+       Fall.fall_avg AS FALL_AVG, Winter.winter_avg AS WINTER_AVG,
+       view1.avg AS AVERAGE, view1.total, view1.count
+	   FROM view1
+	   LEFT JOIN Spring ON view1.cust = Spring.cust AND view1.prod = Spring.prod
+	   LEFT JOIN Summer ON view1.cust = Summer.cust AND view1.prod = Summer.prod
+	   LEFT JOIN Fall ON view1.cust = Fall.cust AND view1.prod = Fall.prod
+	   LEFT JOIN Winter ON view1.cust = Winter.cust AND view1.prod = Winter.prod;
+
+Query 5:
+WITH S AS (
+    SELECT DISTINCT prod FROM sales
+),
+Q1 AS (SELECT prod, MAX(quant) AS Q1 FROM sales WHERE month BETWEEN 1 AND 3 GROUP BY prod),
+Q1_DATE AS ( SELECT Q1.prod, Q1.Q1, S.date FROM Q1 JOIN sales AS S ON Q1.prod = S.prod AND Q1.Q1 = S.quant),
+Q2 AS (SELECT prod, MAX(quant) AS Q2 FROM sales WHERE month BETWEEN 4 AND 6 GROUP BY prod),
+Q2_DATE AS (SELECT Q2.prod, Q2.Q2, S.date FROM Q2 JOIN sales AS S ON Q2.prod = S.prod AND Q2.Q2 = S.quant),
+Q3 AS (SELECT prod, MAX(quant) AS Q3 FROM sales WHERE month BETWEEN 7 AND 9 GROUP BY prod),
+Q3_DATE AS ( SELECT Q3.prod, Q3.Q3, S.date FROM Q3 JOIN sales AS S ON Q3.prod = S.prod AND Q3.Q3 = S.quant),
+Q4 AS (SELECT prod, MAX(quant) AS Q4 FROM sales WHERE month BETWEEN 10 AND 12 GROUP BY prod),
+Q4_DATE AS (SELECT Q4.prod, Q4.Q4, S.date FROM Q4 JOIN sales AS S ON Q4.prod = S.prod AND Q4.Q4 = S.quant)
+
+SELECT 
+S.prod AS PRODUCT, Q1.Q1 AS Q1_MAX, Q1.date AS DATE, Q2.Q2 AS Q2_MAX, Q2.date AS DATE, 
+Q3.Q3 AS Q3_MAX, Q3.date AS DATE, Q4.Q4 AS Q4_MAX, Q4.date AS DATE FROM S
+FULL OUTER JOIN Q1_DATE AS Q1 ON Q1.prod = S.prod FULL OUTER JOIN Q2_DATE AS Q2 ON Q2.prod = S.prod
+FULL OUTER JOIN Q3_DATE AS Q3 ON Q3.prod = S.prod FULL OUTER JOIN Q4_DATE AS Q4 ON Q4.prod = S.prod ORDER BY S.prod;
